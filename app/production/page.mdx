@@ -1,0 +1,235 @@
+# Production Guide
+
+Best practices for running RunicRPC in production.
+
+## Configuration
+
+### Use Multiple Providers
+
+Never rely on a single provider:
+
+```typescript
+// Set API keys in .env file:
+// HELIUS_API_KEY=your-key
+// ALCHEMY_API_KEY=your-key
+// QUICKNODE_RPC_URL=https://your-endpoint.quiknode.pro/token/
+
+const rpc = RunicRPC.create({
+  strategy: 'latency-based'
+});
+
+// Or configure explicitly
+const rpc = RunicRPC.create({
+  providers: {
+    helius: { apiKey: process.env.HELIUS_API_KEY! },
+    alchemy: { apiKey: process.env.ALCHEMY_API_KEY! },
+    quicknode: {
+      rpcUrl: process.env.QUICKNODE_HTTP!,
+      wsUrl: process.env.QUICKNODE_WS!
+    }
+  },
+  strategy: 'latency-based'
+});
+```
+
+### Enable Health Checks
+
+Monitor endpoint health continuously:
+
+```typescript
+const rpc = RunicRPC.create({
+  healthCheck: {
+    enabled: true,
+    interval: 30000, // 30 seconds
+    timeout: 5000,
+    unhealthyThreshold: 3
+  }
+});
+```
+
+### Configure Retry Logic
+
+Set appropriate retry limits:
+
+```typescript
+const rpc = RunicRPC.create({
+  retry: {
+    maxAttempts: 3,
+    initialDelay: 100,
+    maxDelay: 5000
+  }
+});
+```
+
+## Monitoring
+
+### Track Events
+
+Monitor critical events:
+
+```typescript
+rpc.on('endpoint:unhealthy', (event) => {
+  logger.error('Endpoint down', {
+    endpoint: event.endpoint,
+    reason: event.reason
+  });
+  sendAlert(`RPC endpoint ${event.endpoint} is unhealthy`);
+});
+
+rpc.on('circuit:open', (event) => {
+  logger.warn('Circuit breaker opened', { endpoint: event.endpoint });
+});
+```
+
+### Export Metrics
+
+Use Prometheus metrics for observability:
+
+```typescript
+import express from 'express';
+
+const app = express();
+
+app.get('/metrics', (req, res) => {
+  res.set('Content-Type', 'text/plain');
+  res.send(rpc.exportPrometheusMetrics());
+});
+
+app.listen(9090);
+```
+
+### Get Statistics
+
+Monitor performance:
+
+```typescript
+setInterval(() => {
+  const stats = rpc.getStats();
+  console.log({
+    totalRequests: stats.totalRequests,
+    errorRate: stats.totalErrors / stats.totalRequests,
+    cacheHitRate: stats.cacheHitRate,
+    endpoints: stats.endpoints.map(e => ({
+      name: e.name,
+      latency: e.latency.avg,
+      errors: e.errors
+    }))
+  });
+}, 60000); // Every minute
+```
+
+## Error Handling
+
+### Graceful Degradation
+
+Handle failures gracefully:
+
+```typescript
+try {
+  const result = await rpc.request('getSlot');
+  return result;
+} catch (error) {
+  if (error instanceof NoHealthyEndpointsError) {
+    logger.error('All endpoints down', error.lastFailures);
+    // Fallback logic or alert
+  } else if (error instanceof CircuitBreakerOpenError) {
+    logger.warn('Circuit breaker open', { endpoint: error.endpoint });
+    // Wait and retry or use cached data
+  }
+  throw error;
+}
+```
+
+### Cleanup on Shutdown
+
+Always close connections properly:
+
+```typescript
+async function shutdown() {
+  logger.info('Shutting down...');
+  await rpc.close();
+  process.exit(0);
+}
+
+process.on('SIGTERM', shutdown);
+process.on('SIGINT', shutdown);
+```
+
+## Performance Tips
+
+### Cache Configuration
+
+Tune cache for your workload:
+
+```typescript
+const rpc = RunicRPC.create({
+  cache: {
+    enabled: true,
+    ttl: 1000, // 1 second for fast-changing data
+    maxSize: 5000 // Increase for high-traffic
+  }
+});
+```
+
+### Rate Limiting
+
+Set per-endpoint rate limits:
+
+```typescript
+const rpc = RunicRPC.create({
+  endpoints: [
+    {
+      name: 'premium',
+      rpcUrl: '...',
+      rateLimit: 500 // 500 req/s
+    },
+    {
+      name: 'standard',
+      rpcUrl: '...',
+      rateLimit: 100 // 100 req/s
+    }
+  ]
+});
+```
+
+### Connection Pooling
+
+RunicRPC automatically manages HTTP connections and WebSocket pools. No additional configuration needed.
+
+## Security
+
+### Environment Variables
+
+Never hardcode API keys:
+
+```typescript
+// ✗ Bad
+const rpc = RunicRPC.create({
+  providers: {
+    helius: { apiKey: 'abc123...' } // Never do this!
+  }
+});
+
+// ✓ Good - auto-load from .env
+const rpc = RunicRPC.create();
+
+// ✓ Also Good - explicit env vars
+const rpc = RunicRPC.create({
+  providers: {
+    helius: { apiKey: process.env.HELIUS_API_KEY! }
+  }
+});
+```
+
+### API Key Rotation
+
+RunicRPC automatically masks keys in logs, but rotate them regularly:
+
+1. Generate new API key from provider
+2. Update environment variable
+3. Restart application
+4. Revoke old key
+
+## Troubleshooting
+
+See [Troubleshooting Guide](/troubleshooting) for common issues and solutions.

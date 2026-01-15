@@ -1,0 +1,205 @@
+# Configuration
+
+Complete reference for RunicRPC configuration options.
+
+## Configuration Sources
+
+RunicRPC loads configuration from multiple sources with this priority (highest first):
+
+1. **Code config** - Passed directly to `create()` or constructor
+2. **Environment variables** - `.env` file or system env vars
+3. **Config file** - `runic.config.json`
+
+```typescript
+// Auto-load from env and config file
+const rpc = RunicRPC.create();
+
+// Override specific settings
+const rpc = RunicRPC.create({
+  strategy: 'round-robin',
+  logLevel: 'debug'
+});
+```
+
+## Configuration Object
+
+```typescript
+interface RunicRPCConfig {
+  endpoints?: EndpointConfig[];
+  providers?: ProviderConfig;
+  strategy?: 'round-robin' | 'latency-based' | 'weighted' | 'random';
+  cache?: CacheConfig;
+  retry?: RetryConfig;
+  circuitBreaker?: CircuitBreakerConfig;
+  healthCheck?: HealthCheckConfig;
+  rateLimit?: number;
+  logLevel?: 'debug' | 'info' | 'warn' | 'error';
+  useFallback?: boolean;
+}
+```
+
+## Routing Strategies
+
+### Round Robin
+
+Distributes requests evenly across healthy endpoints:
+
+```typescript
+const rpc = RunicRPC.create({
+  strategy: 'round-robin'
+});
+```
+
+**Use when:** You want equal load distribution
+
+### Latency-Based (Recommended)
+
+Routes to the fastest endpoint based on EWMA latency and success rate:
+
+```typescript
+const rpc = RunicRPC.create({
+  strategy: 'latency-based'
+});
+```
+
+**Use when:** You want optimal performance
+
+### Weighted
+
+Routes based on configured weights:
+
+```typescript
+const rpc = RunicRPC.create({
+  strategy: 'weighted',
+  endpoints: [
+    { name: 'primary', rpcUrl: '...', weight: 3 },
+    { name: 'secondary', rpcUrl: '...', weight: 1 }
+  ]
+});
+```
+
+**Use when:** You want to prioritize certain endpoints
+
+### Random
+
+Randomly selects from healthy endpoints:
+
+```typescript
+const rpc = RunicRPC.create({
+  strategy: 'random'
+});
+```
+
+**Use when:** You want simple load distribution
+
+## Cache Configuration
+
+```typescript
+const rpc = RunicRPC.create({
+  cache: {
+    enabled: true,
+    ttl: 1000, // milliseconds
+    maxSize: 1000 // max entries
+  }
+});
+```
+
+**Cached methods:** `getSlot`, `getBalance`, `getAccountInfo`, `getBlockHeight`, `getEpochInfo`, `getHealth`, `getVersion`, `getGenesisHash`
+
+## Retry Configuration
+
+```typescript
+const rpc = RunicRPC.create({
+  retry: {
+    maxAttempts: 3,
+    initialDelay: 100, // milliseconds
+    maxDelay: 5000,
+    backoffMultiplier: 2
+  }
+});
+```
+
+## Circuit Breaker
+
+```typescript
+const rpc = RunicRPC.create({
+  circuitBreaker: {
+    failureThreshold: 5, // consecutive failures before opening
+    successThreshold: 2, // consecutive successes to close
+    timeout: 30000 // milliseconds before trying HALF_OPEN
+  }
+});
+```
+
+## Health Checks
+
+```typescript
+const rpc = RunicRPC.create({
+  healthCheck: {
+    enabled: true,
+    interval: 30000, // check every 30 seconds
+    timeout: 5000, // 5 second timeout per check
+    unhealthyThreshold: 3, // failures before marking unhealthy
+    healthyThreshold: 2 // successes before marking healthy
+  }
+});
+```
+
+## Rate Limiting
+
+```typescript
+const rpc = RunicRPC.create({
+  rateLimit: 100 // requests per second per endpoint
+});
+```
+
+## Logging
+
+```typescript
+const rpc = RunicRPC.create({
+  logLevel: 'info' // 'debug' | 'info' | 'warn' | 'error'
+});
+```
+
+## Complete Example
+
+With auto-loading from `.env` (recommended):
+
+```typescript
+// Just set HELIUS_API_KEY and ALCHEMY_API_KEY in .env
+const rpc = RunicRPC.create({
+  strategy: 'latency-based',
+  cache: {
+    enabled: true,
+    ttl: 1000,
+    maxSize: 1000
+  },
+  retry: {
+    maxAttempts: 3,
+    initialDelay: 100,
+    maxDelay: 5000
+  },
+  circuitBreaker: {
+    failureThreshold: 5,
+    timeout: 30000
+  },
+  healthCheck: {
+    enabled: true,
+    interval: 30000
+  },
+  rateLimit: 100,
+  logLevel: 'info'
+});
+```
+
+Or with explicit provider config:
+
+```typescript
+const rpc = RunicRPC.create({
+  providers: {
+    helius: { apiKey: process.env.HELIUS_API_KEY! },
+    alchemy: { apiKey: process.env.ALCHEMY_API_KEY! }
+  },
+  strategy: 'latency-based'
+});
+```

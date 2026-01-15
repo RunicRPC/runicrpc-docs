@@ -1,0 +1,75 @@
+# Installation
+
+## Prerequisites
+
+- Node.js 20 or higher
+- npm, pnpm, or yarn
+
+## Package Manager
+
+### npm
+
+```bash
+npm install @runic-rpc/sdk @solana/web3.js
+```
+
+### pnpm
+
+```bash
+pnpm add @runic-rpc/sdk @solana/web3.js
+```
+
+### yarn
+
+```bash
+yarn add @runic-rpc/sdk @solana/web3.js
+```
+
+## TypeScript
+
+RunicRPC is written in TypeScript and includes type definitions out of the box. No additional @types packages needed.
+
+```typescript
+import { RunicRPC, RunicRPCConfig } from '@runic-rpc/sdk';
+
+// Auto-loads from .env or runic.config.json
+const rpc = RunicRPC.create();
+
+// Or with explicit config
+const config: RunicRPCConfig = {
+  providers: {
+    helius: { apiKey: process.env.HELIUS_API_KEY! }
+  }
+};
+
+const rpc2 = RunicRPC.create(config);
+```
+
+## Verify Installation
+
+Create a simple test file to verify everything works:
+
+```typescript
+// test.ts
+import { RunicRPC } from '@runic-rpc/sdk';
+
+const rpc = RunicRPC.create({ useFallback: true });
+
+rpc.request('getSlot')
+  .then(slot => console.log('Current slot:', slot))
+  .catch(err => console.error('Error:', err))
+  .finally(() => rpc.close());
+```
+
+Run it:
+
+```bash
+npx tsx test.ts
+```
+
+You should see the current Solana slot number printed to the console.
+
+## Next Steps
+
+- [Configure your first provider](/providers)
+- [Learn about configuration options](/configuration)

@@ -1,0 +1,113 @@
+# Getting Started
+
+Get up and running with RunicRPC in 5 minutes.
+
+## Installation
+
+Install RunicRPC and its peer dependency:
+
+```bash
+npm install @runic-rpc/sdk @solana/web3.js
+```
+
+Or with pnpm:
+
+```bash
+pnpm add @runic-rpc/sdk @solana/web3.js
+```
+
+## Quick Start
+
+The easiest way to get started is to use `RunicRPC.create()` which auto-loads configuration from your environment or config file:
+
+```typescript
+import { RunicRPC } from '@runic-rpc/sdk';
+
+// Auto-loads from .env or runic.config.json
+const rpc = RunicRPC.create();
+
+const slot = await rpc.request('getSlot');
+console.log('Current slot:', slot);
+```
+
+Then add your API keys to a `.env` file:
+
+```bash
+HELIUS_API_KEY=your-helius-api-key
+ALCHEMY_API_KEY=your-alchemy-api-key
+```
+
+Or create a `runic.config.json`:
+
+```json
+{
+  "providers": {
+    "helius": { "apiKey": "your-helius-api-key" },
+    "alchemy": { "apiKey": "your-alchemy-api-key" }
+  },
+  "strategy": "latency-based"
+}
+```
+
+## Configuration Priority
+
+RunicRPC loads configuration from multiple sources with this priority (highest first):
+
+1. **Code config** - Passed directly to `create()` or constructor
+2. **Environment variables** - `.env` file or system env vars
+3. **Config file** - `runic.config.json`
+
+```typescript
+// Override specific settings while using auto-loaded config
+const rpc = RunicRPC.create({
+  strategy: 'round-robin',  // Override strategy
+  logLevel: 'debug'
+});
+```
+
+## Direct Configuration
+
+You can also configure directly in code without auto-loading:
+
+```typescript
+const rpc = new RunicRPC({
+  providers: {
+    helius: { apiKey: 'your-helius-api-key' }
+  }
+});
+```
+
+## With Multiple Providers
+
+Configure multiple providers for automatic failover:
+
+```typescript
+const rpc = RunicRPC.create({
+  providers: {
+    helius: { apiKey: 'helius-key' },
+    alchemy: { apiKey: 'alchemy-key' },
+  },
+  strategy: 'latency-based',
+});
+```
+
+## Drop-in Replacement
+
+RunicRPC is designed as a drop-in replacement for `Connection`:
+
+```typescript
+// Before
+import { Connection } from '@solana/web3.js';
+const connection = new Connection('https://api.mainnet-beta.solana.com');
+
+// After
+import { RunicRPC } from '@runic-rpc/sdk';
+const rpc = RunicRPC.create();
+```
+
+## Next Steps
+
+- [Configure providers](/providers)
+- [Learn about routing strategies](/configuration)
+- [Monitor with events](/events)
+- [Production best practices](/production)

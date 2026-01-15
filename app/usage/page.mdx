@@ -1,0 +1,181 @@
+# How to Use RunicRPC
+
+This guide covers how to use RunicRPC packages from npm for different use cases.
+
+## For Developers (SDK)
+
+The SDK is the core library for adding load-balanced RPC functionality to your Solana applications.
+
+### 1. Install the SDK
+
+```bash
+npm install @runic-rpc/sdk @solana/web3.js
+```
+
+### 2. Use in your project
+
+```typescript
+import { RunicRPC } from '@runic-rpc/sdk';
+import { PublicKey } from '@solana/web3.js';
+
+// Auto-loads from .env (set HELIUS_API_KEY there)
+const rpc = RunicRPC.create({
+  strategy: 'latency-based',
+});
+
+// Or provide config directly
+const rpc = RunicRPC.create({
+  providers: {
+    helius: { apiKey: 'YOUR_HELIUS_KEY' },
+  },
+  strategy: 'latency-based',
+});
+
+const balance = await rpc.request('getBalance', [new PublicKey('...')]);
+```
+
+**Learn more:** [Getting Started](/getting-started) | [Configuration](/configuration)
+
+---
+
+## For Quick Testing (CLI)
+
+The CLI provides operational tools for testing your RPC providers from the terminal.
+
+### 1. Install the CLI globally
+
+```bash
+npm install -g @runic-rpc/cli
+```
+
+### 2. Test your providers
+
+Point the CLI to your `.env` file containing your API keys:
+
+```bash
+runic-rpc test --env .env
+```
+
+The CLI looks for `HELIUS_API_KEY`, `ALCHEMY_API_KEY`, or their `NEXT_PUBLIC_` prefixed variants.
+
+Example `.env` file:
+
+```bash
+HELIUS_API_KEY=your-helius-key
+ALCHEMY_API_KEY=your-alchemy-key
+```
+
+Test specific providers:
+
+```bash
+runic-rpc test --providers helius --env .env
+```
+
+**Available Commands:**
+
+- `runic-rpc test` - Test provider connectivity and latency
+- `runic-rpc init` - Generate a config template (optional, for advanced settings)
+- `runic-rpc --help` - Show all available commands
+
+---
+
+## For Monitoring (Dashboard)
+
+The dashboard provides a web-based monitoring interface for your RPC infrastructure.
+
+### 1. Install the dashboard globally
+
+```bash
+npm install -g @runic-rpc/dashboard
+```
+
+### 2. Launch the dashboard
+
+```bash
+runic-rpc-dashboard --port 3000
+```
+
+### 3. Open in browser
+
+Navigate to [http://localhost:3000](http://localhost:3000) to view the monitoring dashboard.
+
+**Features:**
+
+- Real-time provider health monitoring
+- Request latency visualization
+- Circuit breaker status
+- Success/failure rate tracking
+- Historical metrics
+
+---
+
+## For Building Custom UIs (UI Components)
+
+The UI package provides a shared design system with reusable React components for building custom monitoring interfaces.
+
+### 1. Install the UI package
+
+```bash
+npm install @runic-rpc/ui
+```
+
+### 2. Add the Tailwind preset
+
+In your `tailwind.config.js`:
+
+```javascript
+module.exports = {
+  presets: [require('@runic-rpc/ui/tailwind-preset')],
+  // ... your other config
+}
+```
+
+### 3. Import styles
+
+In your main CSS file:
+
+```css
+@import '@runic-rpc/ui/styles';
+```
+
+### 4. Use components
+
+```tsx
+import { Button, AppShell, Sidebar } from '@runic-rpc/ui';
+
+export default function App() {
+  return (
+    <AppShell>
+      <Sidebar>...</Sidebar>
+      <Button>Click me</Button>
+    </AppShell>
+  );
+}
+```
+
+**Available Components:**
+
+- `AppShell` - Main application layout
+- `Sidebar` - Navigation sidebar
+- `Button` - Styled button component
+- `Card` - Content card component
+- And more...
+
+---
+
+## Summary Table
+
+| Package | Install Command | Use Case |
+| :------ | :-------------- | :------- |
+| `@runic-rpc/sdk` | `npm i @runic-rpc/sdk @solana/web3.js` | Add load-balanced RPC to your app |
+| `@runic-rpc/cli` | `npm i -g @runic-rpc/cli` | Test providers from terminal |
+| `@runic-rpc/dashboard` | `npm i -g @runic-rpc/dashboard` | Monitor RPC infrastructure |
+| `@runic-rpc/ui` | `npm i @runic-rpc/ui` | Build custom monitoring UIs |
+
+
+## Next Steps
+
+- **New to RunicRPC?** Start with the [Getting Started](/getting-started) guide
+- **Ready to configure?** See [Configuration](/configuration) reference
+- **Need help?** Check [Troubleshooting](/troubleshooting)
+- **Going to production?** Read [Production Tips](/production)

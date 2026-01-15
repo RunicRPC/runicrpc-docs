@@ -1,0 +1,245 @@
+# Troubleshooting
+
+Common issues and solutions when using RunicRPC.
+
+## Installation Issues
+
+### Peer Dependency Warnings
+
+```bash
+npm WARN @runic-rpc/sdk requires a peer of @solana/web3.js
+```
+
+**Solution:** Install the peer dependency:
+
+```bash
+npm install @solana/web3.js
+```
+
+## Connection Issues
+
+### NoHealthyEndpointsError
+
+**Error:** `NoHealthyEndpointsError: No healthy endpoints available`
+
+**Causes:**
+1. Invalid API keys
+2. Network connectivity issues
+3. All providers are rate-limiting
+4. Provider outages
+
+**Solutions:**
+
+```typescript
+// 1. Verify API keys
+console.log('API keys configured:', {
+  helius: !!process.env.HELIUS_API_KEY,
+  alchemy: !!process.env.ALCHEMY_API_KEY
+});
+
+// 2. Check endpoint health
+const health = rpc.getAllHealth();
+console.log('Endpoint health:', health);
+
+// 3. Enable fallback
+const rpc = RunicRPC.create({
+  providers: { /* your providers */ },
+  useFallback: true // Adds public endpoint
+});
+```
+
+### CircuitBreakerOpenError
+
+**Error:** `CircuitBreakerOpenError: Circuit breaker is open for endpoint: helius`
+
+**Cause:** Too many consecutive failures
+
+**Solution:** Wait for circuit breaker timeout or check endpoint health:
+
+```typescript
+// Circuit breaker will automatically try HALF_OPEN after timeout
+// Default: 30 seconds
+
+// Or monitor events
+rpc.on('circuit:halfOpen', (event) => {
+  console.log(`Circuit trying to close for ${event.endpoint}`);
+});
+
+rpc.on('circuit:closed', (event) => {
+  console.log(`Circuit closed for ${event.endpoint}`);
+});
+```
+
+## Performance Issues
+
+### High Latency
+
+**Symptom:** Slow RPC requests
+
+**Solutions:**
+
+```typescript
+// 1. Use latency-based routing
+const rpc = RunicRPC.create({
+  strategy: 'latency-based' // Routes to fastest endpoint
+});
+
+// 2. Add more providers
+const rpc = RunicRPC.create({
+  providers: {
+    helius: { apiKey: '...' },
+    alchemy: { apiKey: '...' },
+    quicknode: { rpcUrl: '...' }
+  }
+});
+
+// 3. Check endpoint latency
+const stats = rpc.getStats();
+console.log('Latency by endpoint:');
+stats.endpoints.forEach(ep => {
+  console.log(`${ep.name}: ${ep.latency.avg}ms`);
+});
+```
+
+### Low Cache Hit Rate
+
+**Symptom:** High request volume despite caching
+
+**Solutions:**
+
+```typescript
+// 1. Increase cache size
+const rpc = RunicRPC.create({
+  cache: {
+    enabled: true,
+    maxSize: 5000, // Increase from default 1000
+    ttl: 2000 // Increase TTL if data doesn't change often
+  }
+});
+
+// 2. Check cache metrics
+const stats = rpc.getStats();
+console.log('Cache hit rate:', stats.cacheHitRate);
+
+// 3. Only cacheable methods are cached
+// getSlot, getBalance, getAccountInfo, etc.
+```
+
+## Rate Limiting
+
+### RateLimitError
+
+**Error:** `RateLimitError: Rate limit exceeded for endpoint: helius`
+
+**Solutions:**
+
+```typescript
+// 1. Configure rate limits
+const rpc = RunicRPC.create({
+  rateLimit: 100, // requests per second
+  endpoints: [
+    {
+      name: 'helius',
+      rpcUrl: '...',
+      rateLimit: 200 // Override per endpoint
+    }
+  ]
+});
+
+// 2. Add more providers for failover
+// RunicRPC automatically tries next endpoint when rate-limited
+
+// 3. Monitor rate limit usage
+const stats = rpc.getStats();
+console.log('Request rates:');
+stats.endpoints.forEach(ep => {
+  const rps = ep.requests / 60; // Requests per second (approx)
+  console.log(`${ep.name}: ${rps.toFixed(1)} req/s`);
+});
+```
+
+## WebSocket Issues
+
+### WebSocket Connection Failed
+
+**Symptom:** Subscriptions not working
+
+**Solutions:**
+
+```typescript
+// 1. Verify wsUrl is configured
+const rpc = RunicRPC.create({
+  providers: {
+    helius: {
+      apiKey: 'your-key'
+      // WebSocket URL is automatically configured
+    }
+  }
+});
+
+// 2. Monitor reconnection
+rpc.on('ws:reconnect', (event) => {
+  console.log(`Reconnecting: ${event.endpoint}, attempt ${event.attempt}`);
+});
+
+// 3. Check if provider supports WebSocket
+// QuickNode requires separate wsUrl:
+const rpc = RunicRPC.create({
+  providers: {
+    quicknode: {
+      rpcUrl: 'https://...',
+      wsUrl: 'wss://...' // Required!
+    }
+  }
+});
+```
+
+## Memory Issues
+
+### High Memory Usage
+
+**Cause:** Unbounded caches or subscriptions
+
+**Solutions:**
+
+```typescript
+// 1. Limit cache size
+const rpc = RunicRPC.create({
+  cache: {
+    maxSize: 1000 // Adjust based on your needs
+  }
+});
+
+// 2. Clean up subscriptions
+const subscriptions: number[] = [];
+
+// Track subscriptions
+const subId = await rpc.subscribe(...);
+subscriptions.push(subId);
+
+// Cleanup when done
+for (const id of subscriptions) {
+  await rpc.unsubscribe(id);
+}
+
+// 3. Close RunicRPC instance
+await rpc.close(); // Releases all resources
+```
+
+## Debug Mode
+
+Enable debug logging for detailed information:
+
+```typescript
+const rpc = RunicRPC.create({
+  logLevel: 'debug' // Shows all internal operations
+});
+```
+
+## Still Having Issues?
+
+1. Check [GitHub Issues](https://github.com/RunicRPC/runic-rpc/issues)
+2. Enable debug logging
+3. Collect error messages and stack traces
+4. Review [Configuration](/configuration) guide
+5. Open a new issue with reproduction steps

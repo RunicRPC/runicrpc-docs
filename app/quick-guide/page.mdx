@@ -1,0 +1,109 @@
+# How to Use RunicRPC from npm
+
+## For Developers (SDK)
+
+### 1. Install the SDK
+
+```bash
+npm install @runic-rpc/sdk @solana/web3.js
+```
+
+### 2. Use in your project
+
+```typescript
+import { RunicRPC } from '@runic-rpc/sdk';
+import { PublicKey } from '@solana/web3.js';
+
+const rpc = new RunicRPC({
+  providers: {
+    helius: { apiKey: 'YOUR_HELIUS_KEY' },
+  },
+  strategy: 'latency-based',
+});
+
+const balance = await rpc.request('getBalance', [new PublicKey('...')]);
+```
+
+## For Quick Testing (CLI)
+
+### 1. Install the CLI globally
+
+```bash
+npm install -g @runic-rpc/cli
+```
+
+### 2. Initialize a config file
+
+```bash
+runic-rpc init
+```
+
+### 3. Test your providers
+
+```bash
+runic-rpc test --providers helius,alchemy --env .env
+```
+
+## For Monitoring (Dashboard)
+
+### 1. Install the dashboard globally
+
+```bash
+npm install -g @runic-rpc/dashboard
+```
+
+### 2. Launch the dashboard
+
+```bash
+runic-rpc-dashboard --port 3000
+```
+
+### 3. Open http://localhost:3000
+
+## For Building Custom UIs (UI Components)
+
+### 1. Install the UI package
+
+```bash
+npm install @runic-rpc/ui
+```
+
+### 2. Add the Tailwind preset (in tailwind.config.js)
+
+```javascript
+module.exports = {
+  presets: [require('@runic-rpc/ui/tailwind-preset')],
+  // ...
+}
+```
+
+### 3. Import styles (in your CSS)
+
+```css
+@import '@runic-rpc/ui/styles';
+```
+
+### 4. Use components
+
+```typescript
+import { Button, AppShell, Sidebar } from '@runic-rpc/ui';
+
+export default function App() {
+  return (
+    <AppShell>
+      <Sidebar>...</Sidebar>
+      <Button>Click me</Button>
+    </AppShell>
+  );
+}
+```
+
+## Summary Table
+
+| Package | Install Command | Use Case |
+|---------|----------------|----------|
+| `@runic-rpc/sdk` | `npm i @runic-rpc/sdk @solana/web3.js` | Add load-balanced RPC to your app |
+| `@runic-rpc/cli` | `npm i -g @runic-rpc/cli` | Test providers from terminal |
+| `@runic-rpc/dashboard` | `npm i -g @runic-rpc/dashboard` | Monitor RPC infrastructure |
+| `@runic-rpc/ui` | `npm i @runic-rpc/ui` | Build custom monitoring UIs |
+

@@ -1,0 +1,191 @@
+# Providers
+
+RunicRPC supports multiple Solana RPC providers with easy configuration.
+
+## Quick Setup
+
+The fastest way to configure providers is with environment variables:
+
+```bash
+# .env
+HELIUS_API_KEY=your-helius-key
+ALCHEMY_API_KEY=your-alchemy-key
+```
+
+```typescript
+import { RunicRPC } from '@runic-rpc/sdk';
+
+// Auto-loads from .env
+const rpc = RunicRPC.create();
+```
+
+Or use a config file (`runic.config.json`):
+
+```json
+{
+  "providers": {
+    "helius": { "apiKey": "your-helius-key" },
+    "alchemy": { "apiKey": "your-alchemy-key" }
+  },
+  "strategy": "latency-based"
+}
+```
+
+## Supported Providers
+
+### Helius
+
+[Helius](https://helius.dev) provides high-performance Solana RPC infrastructure.
+
+```typescript
+import { RunicRPC, createHeliusEndpoint } from '@runic-rpc/sdk';
+
+const rpc = RunicRPC.create({
+  providers: {
+    helius: { apiKey: 'your-api-key' }
+  }
+});
+
+// Or create endpoint directly
+const endpoint = createHeliusEndpoint('your-api-key');
+```
+
+**URLs:**
+- HTTP: `https://mainnet.helius-rpc.com/?api-key=KEY`
+- WS: `wss://mainnet.helius-rpc.com/?api-key=KEY`
+
+### Alchemy
+
+[Alchemy](https://alchemy.com) offers enterprise-grade blockchain infrastructure.
+
+```typescript
+const rpc = RunicRPC.create({
+  providers: {
+    alchemy: { apiKey: 'your-api-key' }
+  }
+});
+```
+
+**URLs:**
+- HTTP: `https://solana-mainnet.g.alchemy.com/v2/KEY`
+- WS: `wss://solana-mainnet.g.alchemy.com/v2/KEY`
+
+### QuickNode
+
+[QuickNode](https://quicknode.com) provides fast and reliable RPC endpoints.
+
+```typescript
+const rpc = RunicRPC.create({
+  providers: {
+    quicknode: {
+      rpcUrl: 'https://your-endpoint.quiknode.pro/token/',
+      wsUrl: 'wss://your-endpoint.quiknode.pro/token/'
+    }
+  }
+});
+```
+
+Or use environment variable:
+
+```bash
+QUICKNODE_RPC_URL=https://your-endpoint.quiknode.pro/token/
+```
+
+### Public Solana
+
+Free public endpoints with rate limits. Use for development only.
+
+```typescript
+import { RunicRPC, createPublicEndpoint } from '@runic-rpc/sdk';
+
+const rpc = RunicRPC.create({
+  endpoints: [createPublicEndpoint()]
+});
+```
+
+⚠️ **Warning:** Public endpoints have aggressive rate limits and may be unreliable.
+
+## Multiple Providers
+
+Configure multiple providers for automatic failover:
+
+```typescript
+const rpc = RunicRPC.create({
+  providers: {
+    helius: { apiKey: 'helius-key' },
+    alchemy: { apiKey: 'alchemy-key' },
+    quicknode: {
+      rpcUrl: 'https://your-endpoint.quiknode.pro/token/',
+      wsUrl: 'wss://your-endpoint.quiknode.pro/token/'
+    }
+  },
+  strategy: 'latency-based', // Automatically route to fastest provider
+});
+```
+
+Or use a config file (`runic.config.json`):
+
+```json
+{
+  "providers": {
+    "helius": { "apiKey": "helius-key" },
+    "alchemy": { "apiKey": "alchemy-key" },
+    "quicknode": {
+      "rpcUrl": "https://your-endpoint.quiknode.pro/token/",
+      "wsUrl": "wss://your-endpoint.quiknode.pro/token/"
+    }
+  },
+  "strategy": "latency-based"
+}
+```
+
+```typescript
+// Auto-loads from runic.config.json
+const rpc = RunicRPC.create();
+```
+
+## Custom Endpoints
+
+Add custom RPC endpoints:
+
+```typescript
+const rpc = RunicRPC.create({
+  endpoints: [
+    {
+      name: 'custom-rpc',
+      rpcUrl: 'https://my-custom-rpc.com',
+      wsUrl: 'wss://my-custom-rpc.com',
+      weight: 2, // Higher weight = higher priority
+      rateLimit: 100 // requests per second
+    }
+  ]
+});
+```
+
+## Environment Variables
+
+Store API keys securely in environment variables:
+
+```bash
+# .env
+HELIUS_API_KEY=your-helius-key
+ALCHEMY_API_KEY=your-alchemy-key
+QUICKNODE_RPC_URL=https://your-endpoint.quiknode.pro/token/
+```
+
+RunicRPC auto-loads these when using `create()`:
+
+```typescript
+import { RunicRPC } from '@runic-rpc/sdk';
+
+// Automatically loads from .env
+const rpc = RunicRPC.create();
+```
+
+Supported prefixes: `HELIUS_API_KEY`, `NEXT_PUBLIC_HELIUS_API_KEY`, `VITE_HELIUS_API_KEY`
+
+## Next Steps
+
+- [Configure routing strategies](/configuration)
+- [Monitor endpoint health](/events)
+- [Production tips](/production)

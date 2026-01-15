@@ -1,0 +1,229 @@
+# Migration Guide
+
+Migrate from `@solana/web3.js` Connection to RunicRPC.
+
+## Quick Migration
+
+RunicRPC is designed as a drop-in replacement:
+
+### Before
+
+```typescript
+import { Connection } from '@solana/web3.js';
+
+const connection = new Connection('https://api.mainnet-beta.solana.com');
+
+const slot = await connection.getSlot();
+const balance = await connection.getBalance(publicKey);
+```
+
+### After
+
+```typescript
+import { RunicRPC } from '@runic-rpc/sdk';
+
+const rpc = RunicRPC.create({ useFallback: true });
+
+const slot = await rpc.request('getSlot');
+const balance = await rpc.request('getBalance', [publicKey.toString()]);
+```
+
+## Key Differences
+
+### Method Calls
+
+**Connection** uses methods:
+```typescript
+await connection.getSlot();
+await connection.getBalance(publicKey);
+await connection.getAccountInfo(publicKey);
+```
+
+**RunicRPC** uses `request()`:
+```typescript
+await rpc.request('getSlot');
+await rpc.request('getBalance', [publicKey.toString()]);
+await rpc.request('getAccountInfo', [publicKey.toString()]);
+```
+
+### PublicKey Conversion
+
+Connection accepts `PublicKey` objects. RunicRPC requires strings:
+
+```typescript
+import { PublicKey } from '@solana/web3.js';
+
+const publicKey = new PublicKey('...');
+
+// Connection
+await connection.getBalance(publicKey);
+
+// RunicRPC
+await rpc.request('getBalance', [publicKey.toString()]);
+```
+
+## Common Patterns
+
+### Getting Balance
+
+```typescript
+// Before
+const balance = await connection.getBalance(publicKey);
+
+// After
+const balance = await rpc.request('getBalance', [publicKey.toString()]);
+```
+
+### Getting Account Info
+
+```typescript
+// Before
+const accountInfo = await connection.getAccountInfo(publicKey);
+
+// After
+const accountInfo = await rpc.request('getAccountInfo', [
+  publicKey.toString(),
+  { encoding: 'base64' }
+]);
+```
+
+### Sending Transactions
+
+```typescript
+import { Transaction } from '@solana/web3.js';
+
+const transaction = new Transaction().add(/* instructions */);
+
+// Before
+const signature = await connection.sendTransaction(transaction, [signer]);
+
+// After
+const signature = await rpc.request('sendTransaction', [
+  transaction.serialize().toString('base64')
+]);
+```
+
+### Confirming Transactions
+
+```typescript
+// Before
+await connection.confirmTransaction(signature);
+
+// After
+await rpc.request('getSignatureStatuses', [[signature]]);
+```
+
+## WebSocket Subscriptions
+
+### Account Subscribe
+
+```typescript
+// Before
+const subscriptionId = connection.onAccountChange(
+  publicKey,
+  (accountInfo) => {
+    console.log('Account changed:', accountInfo);
+  }
+);
+
+// After
+const subscriptionId = await rpc.subscribe(
+  'accountSubscribe',
+  [publicKey.toString(), { encoding: 'base64' }],
+  (accountInfo) => {
+    console.log('Account changed:', accountInfo);
+  }
+);
+```
+
+### Cleanup
+
+```typescript
+// Before
+connection.removeAccountChangeListener(subscriptionId);
+
+// After
+await rpc.unsubscribe(subscriptionId);
+```
+
+## Benefits of Migration
+
+### 1. Automatic Failover
+
+```typescript
+const rpc = RunicRPC.create({
+  providers: {
+    helius: { apiKey: 'key1' },
+    alchemy: { apiKey: 'key2' }
+  }
+});
+
+// Automatically fails over if one provider is down
+```
+
+### 2. Circuit Breaker
+
+Prevents cascading failures:
+
+```typescript
+rpc.on('circuit:open', (event) => {
+  console.log(`Circuit opened for ${event.endpoint}`);
+});
+```
+
+### 3. Intelligent Routing
+
+Routes to fastest endpoint:
+
+```typescript
+const rpc = RunicRPC.create({
+  strategy: 'latency-based'
+});
+```
+
+### 4. Request Caching
+
+Automatic caching with TTL:
+
+```typescript
+const rpc = RunicRPC.create({
+  cache: {
+    enabled: true,
+    ttl: 1000
+  }
+});
+```
+
+### 5. Observability
+
+Comprehensive events and metrics:
+
+```typescript
+const stats = rpc.getStats();
+console.log('Cache hit rate:', stats.cacheHitRate);
+console.log('Total requests:', stats.totalRequests);
+```
+
+## Gradual Migration
+
+You can use both Connection and RunicRPC during migration:
+
+```typescript
+import { Connection } from '@solana/web3.js';
+import { RunicRPC } from '@runic-rpc/sdk';
+
+const connection = new Connection('https://api.mainnet-beta.solana.com');
+const rpc = RunicRPC.create({ useFallback: true });
+
+// Use RunicRPC for high-volume reads
+const slot = await rpc.request('getSlot');
+
+// Keep using Connection for complex operations
+const transaction = await connection.sendTransaction(...);
+```
+
+## Need Help?
+
+- [Configuration Guide](/configuration)
+- [Troubleshooting](/troubleshooting)
+- [GitHub Discussions](https://github.com/RunicRPC/runic-rpc/discussions)

@@ -1,0 +1,117 @@
+# Events
+
+RunicRPC emits events for comprehensive observability.
+
+## Event Types
+
+### Endpoint Events
+
+```typescript
+rpc.on('endpoint:healthy', (event) => {
+  console.log(`${event.endpoint} is now healthy`);
+});
+
+rpc.on('endpoint:unhealthy', (event) => {
+  console.log(`${event.endpoint} is unhealthy: ${event.reason}`);
+});
+
+rpc.on('endpoint:selected', (event) => {
+  console.log(`Selected endpoint: ${event.endpoint}`);
+});
+```
+
+### Request Events
+
+```typescript
+rpc.on('request:start', (event) => {
+  console.log(`Starting ${event.method}`);
+});
+
+rpc.on('request:success', (event) => {
+  console.log(`${event.method} completed in ${event.duration}ms`);
+});
+
+rpc.on('request:error', (event) => {
+  console.error(`${event.method} failed:`, event.error);
+});
+
+rpc.on('request:retry', (event) => {
+  console.log(`Retrying ${event.method}, attempt ${event.attempt}`);
+});
+```
+
+### Cache Events
+
+```typescript
+rpc.on('cache:hit', (event) => {
+  console.log(`Cache hit for ${event.method}`);
+});
+
+rpc.on('cache:miss', (event) => {
+  console.log(`Cache miss for ${event.method}`);
+});
+```
+
+### Circuit Breaker Events
+
+```typescript
+rpc.on('circuit:open', (event) => {
+  console.warn(`Circuit opened for ${event.endpoint}`);
+});
+
+rpc.on('circuit:halfOpen', (event) => {
+  console.log(`Circuit half-open for ${event.endpoint}`);
+});
+
+rpc.on('circuit:closed', (event) => {
+  console.log(`Circuit closed for ${event.endpoint}`);
+});
+```
+
+### WebSocket Events
+
+```typescript
+rpc.on('ws:reconnect', (event) => {
+  console.log(`Reconnecting to ${event.endpoint}, attempt ${event.attempt}`);
+});
+```
+
+## Complete Example
+
+```typescript
+const rpc = RunicRPC.create({
+  providers: {
+    helius: { apiKey: 'your-key' }
+  }
+});
+
+// Monitor all events
+rpc.on('endpoint:unhealthy', (event) => {
+  // Alert your team
+  sendAlert(`Endpoint ${event.endpoint} is down: ${event.reason}`);
+});
+
+rpc.on('circuit:open', (event) => {
+  // Log to monitoring system
+  logger.error('Circuit breaker opened', { endpoint: event.endpoint });
+});
+
+rpc.on('request:retry', (event) => {
+  // Track retry metrics
+  metrics.increment('rpc.retries', { method: event.method });
+});
+```
+
+## Removing Event Listeners
+
+```typescript
+const handler = (event) => {
+  console.log('Event:', event);
+};
+
+// Add listener
+rpc.on('request:success', handler);
+
+// Remove listener
+rpc.off('request:success', handler);
+```

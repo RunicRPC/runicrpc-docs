@@ -1,0 +1,124 @@
+# WebSockets
+
+RunicRPC provides robust WebSocket support with auto-reconnect and failover.
+
+## Basic Usage
+
+```typescript
+const rpc = RunicRPC.create({
+  providers: {
+    helius: { apiKey: 'your-key' }
+  }
+});
+
+// Subscribe to account changes
+const subId = await rpc.subscribe(
+  'accountSubscribe',
+  [publicKey, { encoding: 'jsonParsed' }],
+  (data) => {
+    console.log('Account updated:', data);
+  }
+);
+
+// Unsubscribe when done
+await rpc.unsubscribe(subId);
+```
+
+## Auto-Reconnect
+
+WebSocket connections automatically reconnect on failure:
+
+```typescript
+// Connection will automatically reconnect if dropped
+rpc.on('ws:reconnect', (event) => {
+  console.log(`Reconnecting to ${event.endpoint}, attempt ${event.attempt}`);
+});
+```
+
+## Automatic Resubscription
+
+All active subscriptions are automatically reestablished after reconnection:
+
+```typescript
+// This subscription survives reconnections
+const subId = await rpc.subscribe(
+  'slotSubscribe',
+  [],
+  (slot) => {
+    console.log('Current slot:', slot);
+  }
+);
+
+// Even if connection drops and reconnects,
+// you'll keep receiving slot updates
+```
+
+## Failover
+
+If a WebSocket endpoint fails, RunicRPC automatically fails over to the next available endpoint:
+
+```typescript
+const rpc = RunicRPC.create({
+  providers: {
+    helius: { apiKey: 'helius-key' },
+    alchemy: { apiKey: 'alchemy-key' }
+  }
+});
+
+// If Helius WebSocket fails, automatically switches to Alchemy
+const subId = await rpc.subscribe('accountSubscribe', [publicKey], callback);
+```
+
+## Supported Subscriptions
+
+All standard Solana WebSocket methods are supported:
+
+- `accountSubscribe` - Account changes
+- `programSubscribe` - Program account changes
+- `signatureSubscribe` - Transaction confirmations
+- `slotSubscribe` - Slot updates
+- `rootSubscribe` - Root changes
+- `logsSubscribe` - Log messages
+
+## Example: Real-time Balance Monitoring
+
+```typescript
+const publicKey = 'Your_Public_Key_Here';
+
+const subId = await rpc.subscribe(
+  'accountSubscribe',
+  [publicKey, { encoding: 'jsonParsed' }],
+  (account) => {
+    const balance = account.lamports / 1e9; // Convert to SOL
+    console.log(`Balance: ${balance} SOL`);
+  }
+);
+
+// Keep subscription active...
+
+// Clean up
+await rpc.unsubscribe(subId);
+await rpc.close();
+```
+
+## Graceful Shutdown
+
+Always clean up subscriptions:
+
+```typescript
+const subscriptions: number[] = [];
+
+// Track subscriptions
+subscriptions.push(await rpc.subscribe(...));
+subscriptions.push(await rpc.subscribe(...));
+
+// Cleanup on shutdown
+async function shutdown() {
+  for (const subId of subscriptions) {
+    await rpc.unsubscribe(subId);
+  }
+  await rpc.close();
+}
+
+process.on('SIGINT', shutdown);
+```
